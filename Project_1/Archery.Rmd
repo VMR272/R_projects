@@ -1,0 +1,240 @@
+---
+title: "DATA TAMING ASSIGNMENT 1"
+author: "VINEETH MARIKUNTEMATHA RAVISHARADHYA-a1896845"
+date: "23/02/2024"
+output:
+  pdf_document: default
+  word_document: default
+  html_document:
+    
+    df_print: paged
+---
+
+# Setup
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning = FALSE)
+```
+
+```{r }
+#Load the required packages
+library(here)
+library(tidyverse)
+library(tidyr)
+library(stringr)
+library(forcats)
+library(lubridate)
+library(inspectdf)
+library(ggplot2)
+```
+
+# Q1. Loading the data
+
+```{r}
+# Your student number goes here
+ysn = 1896845
+# Calculate your student number modulo 3
+filenum <- ysn %% 3
+filenum
+filename <- paste0("D:/r studio files/Assignment_1/archery_2.csv")
+filename
+
+# Read in the data
+archery_2 <- read_csv("archery_2.csv")
+# Display the first 10 lines of the data
+
+archery_2
+```
+
+```{r}
+print(n=10,archery_2)
+```
+
+
+# Q2. Taking a random sample of archers
+
+```{r}
+set.seed(1896845)
+sample_archery_2 <- sample_n(archery_2, 100)
+
+sample_archery_2
+```
+
+
+# Q3. Tidying the data
+
+## Q3(a). Converting from wide form to long form
+```{r}
+library(tidyr)
+
+archery_wide_long <- gather(sample_archery_2, key = "session", value = "result", session_1:session_6)
+sample_archery_2
+
+```
+
+## Q3(b). Replacing `result` with 2 new columns
+```{r}
+sample <- str_match(archery_wide_long$result,"Target hit (\\d+) times from (\\d+) shots")
+archery_wide_long <- mutate(archery_wide_long,result = NULL)
+archery_wide_long <-mutate(archery_wide_long,
+shots = sample[,3],
+hits = sample[,2]
+)
+archery_wide_long
+
+
+
+archery_wide_long
+
+
+```
+
+## Q3(c). Replace data in `session` column with session number
+```{r}
+
+
+trial <- str_match(archery_wide_long$session, "session_(\\d+)")
+
+
+archery_wide_long <- mutate(archery_wide_long,
+                            session = as.integer(trial[, 2]))
+
+
+archery_wide_long
+
+```
+
+## Q3(d). Replace "Yes/No" with "TRUE/FALSE"
+```{r}
+archery_wide_long$experienced[archery_wide_long$experienced == "Yes"] <- TRUE
+archery_wide_long$experienced[archery_wide_long$experienced == "No"] <- FALSE
+
+archery_wide_long
+
+
+```
+
+```{r}
+#print first 10 outputs
+print(n=10,archery_wide_long)
+```
+
+
+
+
+
+# Q4. Identifying data types
+
+   name = It is a "Categorical Nominal",as they are not categorized on the basis of hierarchy , making it as a nominal variable.   
+   
+  "experienced" = "Categorical Nominal" , as it appears to be the status of the archers ,with true and false and also its a nominal variable as it has no inherent order from all the categories. 
+  
+  "started" = it is a"Quantitative Continuous" as it represents continuous range of values and also the this variable holds the date of each athlete or archer started
+  
+  "session" = it is a "Quantitative Discrete" as this variable is countable and distinct value as it doesnt have fractions or decimals
+  
+  "shots" = here this variable has the number of shots taken by every archer and which tends to have countable and distinct values, so it is "Quantitative Discrete" . 
+  
+  "hits" = it is similar to shots as it is countable and has distinct value so it is "Quantitative Discrete"      
+  
+  "days_experience" = it is a "Quantitative Continuous" as this variable can take any non variable non negative real value within a continuous range.
+  
+  "accuracy" = it is a "Quantitative Continuous, as it represents the ratio of hits to shots along with the accuracy of every archer.
+
+# Q5(a). Taming the data
+```{r}
+archery_wide_long$hits <- as.integer(archery_wide_long$hits)
+archery_wide_long$shots <- as.integer(archery_wide_long$shots)
+
+
+archery_wide_long
+```
+
+# Q5(b). Taming the data
+`
+```{r}
+
+
+archery_wide_long$started = dmy(archery_wide_long$started)
+archery_wide_long$experienced = as.logical(archery_wide_long$experienced)
+archery_wide_long
+```
+
+```{r}
+#print first 10 outputs
+print(n=10,archery_wide_long)
+```
+
+
+
+
+# Q6. Adding two new colums to dataset
+# adding days_experience column
+```{r}
+
+library(lubridate)
+library(dplyr)
+
+archery_wide_long <- mutate(archery_wide_long,
+                            days_experience = as.integer(difftime(as.Date("2024-02-01"), started, units = "days")))
+
+
+archery_wide_long
+```
+
+
+# adding accuracy column
+```{r}
+archery_wide_long <- mutate(archery_wide_long,
+                            accuracy = hits / shots)
+archery_wide_long$accuracy <- archery_wide_long$hits / archery_wide_long$shots
+
+archery_wide_long
+```
+
+```{r}
+#print first 10 outputs
+print(n=10,archery_wide_long)
+```
+
+
+
+
+# Q7. Display the sample statistics for the numerical values in your dataset
+
+
+```{r}
+
+inspect_num(archery_wide_long)
+
+
+```
+
+
+#q8. Subset of dataset to contain experienced ones
+```{r}
+archery_wide_long <- filter(archery_wide_long, experienced == TRUE)
+archery_wide_long
+```
+
+
+```{r}
+#print first 10 outputs
+print(n=10,archery_wide_long)
+```
+
+
+
+
+#Q9. Scatter plot of accuracy and days_experience
+```{r}
+ggplot(archery_wide_long, aes(x = days_experience, y = accuracy)) +
+  geom_point() +
+  geom_smooth() 
+```
+# q10.
+Since there is a rise in the days_experience , its a sign of positive trend, where it implies that the archers are getting more experience and their accuracy level tends to improve. However at the curve over 750 days becaomes more stable, so to be the better archer it takes anywhere around 750 to 800 days by taking plot as the reference.
+
+
+
+
