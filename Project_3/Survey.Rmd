@@ -1,0 +1,797 @@
+---
+title: "a3_1896845"
+author: "Vineeth Marikuntematha Ravisharadhya"
+date: "2024-04-21"
+output:
+  pdf_document:
+    latex_engine: xelatex
+
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning = FALSE)
+```
+
+```{r}
+#Loading the required library packages
+
+library(here)
+library(readr)
+library(tidyverse)
+library(dplyr)
+library(inspectdf)
+library(stringr)
+library(ggplot2)
+library(caret)
+library(e1071)
+library(tidymodels)
+library(forcats)
+library(rsample)
+library(modelr)
+library(parsnip)
+library(car) 
+library(yardstick)
+```
+
+
+```{r}
+# As per the deliverable specification point 1 setting ysn and x formula as provided.
+# Student number goes here
+ysn = 1896845
+# Calculating student number plus 2 modulo 3
+
+file_num_ = (ysn + 2) %% 3
+file_num_
+file_name_ <- paste0("./data/survey_",file_num_,".csv")
+file_name_
+```
+
+# 1. Load the correct dataset and save it as a tibble. Output the first 10 lines of the dataset.
+
+```{r}
+# Read the data and converting it to tibble
+surv_ = read_csv(here::here("./data/survey_1.csv"))
+surv_ =as_tibble(surv_)
+surv_
+#gadget_data
+head(surv_,10)
+
+```
+
+## Q2. Using dot points, identify what types of variables we now have in our data set, i.e., “Quantitative Discrete”,
+#     “Quantitative Continuous”, “Categorical Nominal”, “Categorical Ordinal”. (Don’t just describe what data
+#      type they are in the tibble — you need to think about the type of variable in the context of the meaning of
+#      the data.) Make sure you provide some justification for your choice of variable types.
+
+* recommend: 
+      The type is Categorical Nominal
+                 This column is considered as a Categorical Nominal as it is only representing two categories 0 and 1 , also there is neither levels nor rankings for classification here.
+                 
+* age: 
+      The type of data type of this column is Quantitative continuous
+      As the column name or variable is filled with ages of people , having decimal values as well, which is continuous. Therefore the age variable is a quantitative continuous variable.
+      
+* company_aware:
+       The type is Categorical nominal
+              This column is considered as Categorical nominal as it is representing only two categories TRUE or FALSE, showing whether the people are aware of the companies existence.Also there is no levels of classification here ,therefore is a categorical nominal variable.
+
+* malfunction:
+              The type of this is Categorical nominal the column is considered as Categorical nominal as it just represent only two categories either TRUE or FALSE, showing whether one of their gadget has been malfunctioned or not. Since there is no ranking or levels of classification here, this column is considered as a categorical nominal variable.
+
+
+* multi_purch: 
+              The type of data type is Categorical nominal as it also represents only two categories that is TRUE and FALSE, showing whether the people did multiple purchase or not. Also there is no ranking or levels of classification here.
+
+* SES: 
+      The type is Categorical Ordinal is considered as a categorical ordinal column because it mentions ranking of the social status of people with high being the highest level and low being the lowest level.
+
+* social_media: 
+               This is considered as Categorical nominal as it just represent only two categories that is TRUE or FALSE, showing whether people are active in social media or not.
+
+
+
+
+```{r}
+
+colnames(surv_)
+
+```
+
+
+
+# Q3. Now it’s time to tame our data. But since we are going to fit a logistic regression model, we need to modify
+#     our requirements a little bit.
+#   • (a) Make sure that all column names are in snake case.
+#   • (b) Make the variables age, company aware, malfunction, multi purch and social media conform to
+#     the Tame Data conventions in Module 2 (page 3).
+#   • (c) Convert recommend to a <fct> data type, with yes for 1 and no for 0.
+#   • (d) Convert the Socio-Economic Status to a <fct>.
+#     (e) Output the first 10 rows of your data.
+```{r}
+
+# as the  ses is in block letters we will convert column name to snake case ,
+surv_= surv_ %>% rename(
+  ses = SES)
+surv_
+
+surv_=relocate (surv_,"age", .before=recommend) 
+surv_ 
+
+surv_ = surv_ %>% mutate (
+  company_aware=as_factor(company_aware),
+  malfunction=as_factor(malfunction),
+  multi_purch=as_factor(multi_purch),
+  social_media=as_factor(social_media))
+surv_
+
+
+
+#
+surv_$ses <-factor(surv_$ses, levels = c("high", "mid", "low")) 
+surv_
+
+#So as the question 3 mandates to tame the data ,as we did on tame for ses we will do it for recommend also.
+surv_ = surv_ %>%  mutate (recommend=as_factor(recommend))
+surv_$recommend = fct_recode(surv_$recommend, "yes"="1","no"="0") 
+surv_
+
+
+```
+
+```{r}
+
+# Display the first 10 lines of the data
+head(surv_,10)
+
+```
+
+
+
+
+# Q4.Setting the correct seed, split your data into a training set (with 40,000 rows) and a testing set, with the
+#    remaining rows. Use the command dim() to output the dimensions of your training and testing sets.
+
+```{r}
+#setting the seed as per the deliverable specification point 2.
+set.seed(1896845)
+
+#split the data to training and testing data set
+surv_splt_ = initial_split( surv_,prop=0.8 )
+surv_tn_ = training( surv_splt_ )
+surv_tt_ = testing( surv_splt_ ) 
+
+# Output the dimensions
+dim(surv_tn_)
+dim(surv_tt_)
+```
+
+
+
+# Q5. Fit a logistic regression model to your training data, with recommend as the response and all other variables
+#     as the predictors. Output the summary of the model. 
+
+
+
+```{r}
+
+#Using logistic regression model for training data.
+
+surv_tn_logrr_ <- logistic_reg() %>% set_engine("glm") 
+surv_ft_ <- surv_tn_logrr_ %>%
+fit(recommend ~ ., data = surv_tn_)
+
+# Lets check for the summary of the model and get all the variables.
+summary(surv_ft_$fit)
+
+```
+
+# Q6. Use the command model matrix() on the ses variable of your training data to see what happens to ses
+#     when we fit a model. (See pages 2 – 6 in Module 7.)
+
+
+
+
+```{r}
+# creating matrix model for ses as per the module 7, page 3.
+mdl_mat = model_matrix(surv_tn_,~ses)
+mdl_mat
+```
+
+# (a) How many new variables have been introduced?
+
+* 2 new columns has been introduced. One column seshigh for whether the person has high social economic status. And another column seslow for whether the person has low social economic status or not.
+
+# (b) What is the reference level for ses?
+* The value mid( middle or medium as per the data instruction in the handout of the client) is considered as the reference for ses.
+
+
+
+
+
+# Q7.(a) Build a new tibble called ses matrix, with the first column giving the true ses data, and the second and
+#        third columns giving the coordinates of the ses value in the new variables defined for the ses variable.
+#        Call these new variables seslow and sesmid. (It should be clear which one is which.)
+
+
+
+
+
+```{r}
+
+ses_mx = tibble(
+  ses = surv_tn_$ses,
+  seslow = mdl_mat$seslow,
+  sesmid = mdl_mat$sesmid
+)
+ses_mx
+```
+
+
+
+
+#   (b)  With the coordinates of the form (seslow, sesmid) use the ses matrix and/or the information from
+#        Question 6 to write down the coordinates of the ses levels “high”, “mid” and “low” in terms of these
+#        new variables.
+
+ low:   (1,0)
+ high : (0,0)
+ mid :  (0,1)
+
+```{r}
+
+```
+
+# Q8. Since we are using general linear models, the model summary describes linear geometric objects, where the
+#     dimension of the geometric object is determined by the number of continuous predictors. We have only a
+#     single continuous predictor so our model describes a set of lines. How many lines are described by the model
+#     in Question 5? Make sure you give some justification for your answer.
+
+#   • (Hint: see the Week 7 seminar and pages 2 – 6 of Module 7. The model summary and the ses matrix
+#      should help.)
+
+solution :
+     As there is only “age” which is continuous variable in our predictor and since we have “ses” variable with 3 levels(high,medium, low) and there are 4 other predictor variables with 2 levels(true, false), so ,we need a combination of 3 * 2 * 2* 2 * 2 = 48 lines to describe the model.
+
+
+
+
+
+# Q9. Now it is time to get serious with our data. There may be some interactions between the variables in the
+#     data set, so fit a new model to your training set using all the individual variables and all the second-order
+#     interaction terms. Use Anova() to find the p-values for each of the variables. Identify all interaction terms
+#     that meet the 99.9% significance level.
+
+
+
+```{r}
+
+surv_tn_logr2_ <- logistic_reg() %>% set_engine("glm")
+surv_ft2_ <- surv_tn_logr2_ %>%
+fit(recommend ~ .^2., data = surv_tn_)
+summary(surv_ft2_$fit)
+
+#Anova
+Anova(surv_ft2_$fit)
+```
+
+# Q9. The interaction terms that meet the 99.9% significance are :
+                Here i am considering only age:malfunction and  multi_purch:ses , as company_aware:social_media and ses:social_media are not greater than 95 percentage significant , so considering only age:malfunction and  multi_purch:ses would better to present.
+
+
+
+# Q10. We’ll now apply backwards stepwise regression. As we learned in Module 7, best practice is to only remove
+#      terms one-by-one starting with the least significant. However, our client wants a result ASAP, so we’ll just
+#      jump straight to removing all the interaction terms that are not extremely significant.
+
+
+# (a) So first fit a new model with just the individual variables and the significant interactions terms that you
+#     identified in Question 9. Show the Anova() output.
+
+
+```{r}
+
+surv_tn_ft2_ <- logistic_reg() %>% set_engine("glm") %>%
+  fit(recommend ~ age + malfunction+ company_aware + multi_purch + ses + social_media + age:malfunction + multi_purch:ses , data = surv_tn_)
+
+#Anova
+Anova(surv_tn_ft2_$fit)
+
+```
+
+
+
+
+# 10 b.Then continue with the proper step-by-step backwards stepwise regression to find a model where all
+#      terms (individual terms and interaction terms) meet the 95% significance level. At each step, identify
+#      the variable that you will remove, and why you will choose that one. Then show the resulting Anova()
+#      after you fit each model.
+
+```{r}
+
+surv_tn_ft2_ <- logistic_reg() %>% set_engine("glm") %>%
+  fit(recommend ~ age + malfunction+ company_aware + multi_purch + ses + age:malfunction + multi_purch:ses , data = surv_tn_)
+
+#Anova
+Anova(surv_tn_ft2_$fit)
+
+```
+
+
+```{r}
+
+surv_tn_ft2_ <- logistic_reg() %>% set_engine("glm") %>%
+  fit(recommend ~ age + malfunction + multi_purch + ses + age:malfunction + multi_purch:ses , data = surv_tn_)
+
+#Anova
+Anova(surv_tn_ft2_$fit)
+
+```
+
+
+
+# Q11. 
+
+#  (a) Which interaction terms are significant in your final model?
+solution:
+       Here according to my dataset survey 1 age:malfunction and multi_purch:ses are the favourable conditions or parameters i have got as interaction terms which are significant in my model.
+
+
+# (b) Thinking about the context of the data, provide some reasonable hypotheses for why those interaction
+#      terms might represent real effects (and are not just statistical noise).
+solution:
+         age:malfunction - So when considering this parameter , we usually tend to agree that most malfunctions are detected by younger generation rather than older generation, as the older generation don't have frequent usage towards gadgets and significance usage from them would be different as their usage towards gadgets may be of a minimum requirements.
+         
+         multi_purch:ses -It represents more on socio-economic status and also the ability towards buying multiple gadgets tends to whether to buy gadget or not. 
+         
+
+```{r}
+summary(surv_tn_ft2_$fit)
+```
+
+
+
+# Q12. Write general form for logistic regression from your model.
+
+Solution:
+
+$$\hat{f}_i = \hat\beta_0 + \hat\beta_1 age + \hat\beta_2 malfunctionTRUE  + \hat\beta_3 multipurchTRUE + \hat\beta_4 sesmid + \hat\beta_5 seslow + \hat\beta_6 age:malfunctionTRUE +\hat\beta_7 multi_purchTRUE:sesmid+ \hat\beta_8 multi_purchTRUE:seslow + \hat\epsilon_i$$
+
+where,
+
+$\hat{f}$ = the estimated function.
+
+$\hat\beta_0$ = estimated intercept.
+
+$\hat\beta_1$, $\hat\beta_2$, $\hat\beta_3$, $\hat\beta_4$, $\hat\beta_5$, $\hat\beta_6$,$\hat\beta_7$ , $\hat\beta_8$ are the coefficients.
+
+$\epsilon_i$ = error term.
+
+
+
+
+#  Q13.Looking at Question 12, the geometric situation is slightly more complicated now than in Question 8, although
+#       our model should still produce a set of lines.
+
+```{r}
+Anova(surv_tn_ft2_$fit)
+```
+
+
+# Q13(a). How many lines does your final model describe? Make sure you provide some justification for your
+#    answer.
+ Solution :
+           So basically we have “age” where it is continuous variable in our predictors and also there is  “ses” variable with 3 levels(high,medium and low) and two other predictor variables with two levels(true and false).
+      So we need a combination of 3 * 2 * 2 = 12 lines to describe the model.
+ 
+
+## Q13(b). Are the lines all parallel? If not, explain why not.
+
+Solution: 
+              The lines are not parallel from the nature of the model with anova and we can see that the significant p-values from it. There is strong relationship between the variables so the it is a non linear relationship.
+              
+
+
+
+# Q14. Now output the summary of your final model showing the estimated coefficients, and use that to write ˆ fi
+#         with all the estimated coefficients replacing the ˆ βj pronumerals.
+
+
+```{r}
+
+summary(surv_tn_ft2_$fit)
+
+```
+
+$$\hat{f}_i = -0.034846+ -0.050490 age + -3.060526 malfunctionTRUE  +  3.078099multi_purchTRUE + 0.053705 sesmid + 0.205564 seslow + -0.104586 age:malfunctionTRUE +-0.066324 multi_purchTRUE:sesmid+ 0.523250 multi_purchTRUE:seslow + \hat\epsilon_i$$
+
+
+
+
+
+# q15. What is our estimate for the log-odds for a respondent:
+
+# (a) who has a low Socio-Economic Status, yet purchased several Gadgets and none of them stopped working?
+Solution:
+
+$$\hat{f}_i = -0.034846+ -0.050490 age + -3.060526 malfunctionTRUE  +  3.078099multi_purchTRUE + 0.053705 sesmid + 0.205564 seslow + -0.104586 age:malfunctionTRUE +-0.066324 multi_purchTRUE:sesmid+ 0.523250 multi_purchTRUE:seslow + \hat\epsilon_i$$
+
+* valuea = -0.034846+ -0.050490 age + -3.060526 * 0  +  3.078099 * 1 + 0.053705 * 0  + 0.205564 * 1 + -0.104586 age * 0  +-0.066324 * 1 * 0 + 0.523250 * 1 *1
+* = 3.772067 - 0.050490 age
+ 
+## (b) who has a mid-range Socio-Economic Status, only purchased a single Gadget and it broke?
+
+* valueb = -0.034846+ -0.050490 age + -3.060526 * 1  +  3.078099 * 0 + 0.053705 * 1  + 0.205564 * 0 + -0.104586 age * 1  +-0.066324 * 0 * 1 + 0.523250 * 0 *0
+* =  - 3.04166 -0.155076 age
+
+
+
+# Q16.Now apply your final model to the testing data. Produce a new tibble containing the predicted class and the
+##    prediction probabilities. Output the first 10 lines of this tibble.
+```{r}
+
+pred_test_surv_ = predict(surv_tn_ft2_, 
+                new_data = surv_tt_, 
+                type = "class")
+
+surv_pred_fin = predict(surv_tn_ft2_,
+                      new_data= surv_tt_,
+                      type = "prob") %>%
+  bind_cols (surv_tt_ %>% select (recommend) ,
+             pred_class = pred_test_surv_)
+
+# Output the first 10 lines
+head(surv_pred_fin,10)
+
+
+
+
+```
+
+# Q17. Now we need to evaluate our model.
+# (a) Find the confusion matrix.
+
+```{r}
+#confusion matrix
+surv_pred_fin %>%  conf_mat( truth = recommend, estimate = .pred_class )
+
+```
+
+
+# (b) If leaving a review is classified as a success, find the sensitivity and specificity of our model.
+```{r}
+
+#sensitivity (the ratio of correct positives to all positives)
+my_sens=1887/(1008+1887)
+my_sens
+#specificity (the ratio of the correct negatives to all negatives) 
+my_spec=6528/(6528+577)
+my_spec
+
+
+```
+
+
+# (c) Plot the ROC curve.
+
+```{r}
+surv_pred_fin %>%  roc_curve( .pred_no, truth = recommend) %>% 
+  autoplot() 
+```
+
+# (d) What is the AUC of this ROC curve?
+```{r}
+auc = surv_pred_fin %>%
+  roc_auc(.pred_no, truth = recommend)
+auc
+```
+# Q18. Finally, let’s answer the company’s question. Based on your model, do you predict that the Mayor will
+#      recommend the Gadget 2? Write some text to interpret your results for the company, and make sure you give
+#      the probabilities of your predicted class.
+
+
+The AUC is 0.8718037 and the prediction for the model created above surv_tn_ft2_ is predicted for Mayor below , where the model will predict that the Mayor will recommend Gadget 2 . Also , the sucess of the model predicted is about 87.18 percentage.
+```{r}
+mayor_predi_ <- predict(surv_tn_ft2_,
+                        new_data = tibble(
+                          age = 45 ,
+                          malfunction = "FALSE" ,
+                          multi_purch = "TRUE" ,
+                          ses = "high"
+                        ))
+
+mayor_predi_
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
