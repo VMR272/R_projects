@@ -1,6 +1,6 @@
 ---
-title: "a3_1896845"
-author: "Vineeth Marikuntematha Ravisharadhya"
+title: "a3"
+author: "Vi"
 date: "2024-04-21"
 output:
   pdf_document:
