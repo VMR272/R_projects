@@ -1,6 +1,6 @@
 ---
-title: "DATA TAMING ASSIGNMENT 1"
-author: "VINEETH MARIKUNTEMATHA RAVISHARADHYA-a1896845"
+title: "DATA TAMING"
+author: "VI"
 date: "23/02/2024"
 output:
   pdf_document: default
